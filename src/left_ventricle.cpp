@@ -144,27 +144,68 @@ LV::assemble()
       cell_matrix = 0.0;
       cell_rhs    = 0.0;
 
+      cell->get_dof_indices(dof_indices);
+
       for (unsigned int q = 0; q < n_q; ++q)
         {
-          Vector<double> forcing_term_loc(dim);
-          forcing_term.vector_value(fe_values.quadrature_point(q),
-                                    forcing_term_loc);
-          Tensor<1, dim> forcing_term_tensor;
+          input_data data;
+          //riempire data con i valori corretti
+        
+          //at each quadrature point the deformation gradient should be 1 initially
 
-          for (unsigned int d=0; d < dim; ++d) {
-            forcing_term_tensor[d]=forcing_term_loc[d];
-          }
+          for (unsigned int i=0; i< dim; ++i)
+            data.F[i][i]= 1.0;
+              
+
+          
+
+          Tensor<2,dim> P=compute_P(data);
+          Tensor<4,dim> dP_dF=compute_dP_dF(data);
+          
+
+          //ho rimosso il forcing term, non sono sicuro al 100% sia corretto
+
+
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
+              Tensor <2,dim> grad_phi_i;
+              for (unsigned int d = 0; d < dim; ++d)
+                grad_phi_i[d] = fe_values.shape_grad(i, q, d);
+
+
+              double residual_i= 0.0;
+              //P: delta phi_i
+
+              for (unsigned int d1 = 0; d1 < dim; ++d1)
+                for (unsigned int d2 = 0; d2 < dim; ++d2)
+                  residual_i += P[d1][d2] * grad_phi_i[d1][d2];
+
+              cell_rhs(i) += residual_i * fe_values.JxW(q);
+                  
+              
+              //dP/dF : delta phi_i  tensoriale  delta phi_j
               for (unsigned int j = 0; j < dofs_per_cell; ++j)
                 {
-              
-                  
+                  Tensor <2,dim> grad_phi_j;
+                  for (unsigned int d = 0; d < dim; ++d)
+                    grad_phi_j[d] = fe_values.shape_grad(j, q, d);
 
 
+                  double tangent_ij= 0.0;
+                  for (unsigned int d1 = 0; d1 < dim; ++d1)
+                    for (unsigned int d2 = 0; d2 < dim; ++d2)
+                      for (unsigned int d3 = 0; d3 < dim; ++d3)
+                        for (unsigned int d4 = 0; d4 < dim; ++d4)
+                          tangent_ij += dP_dF[d1][d2][d3][d4] *
+                                        grad_phi_i[d3][d4] *
+                                        grad_phi_j[d1][d2];
 
 
+                  cell_matrix(i,j) += tangent_ij * fe_values.JxW(q);
+                }
+            }
+        }
 
                   //creare qui il tensore input_data e calcolare P e dP/dF
                   //assemblare cell_matrix con dP/dF tenendo conto del prodotto scalare tensoriale
@@ -176,8 +217,6 @@ LV::assemble()
 
 
 
-                }
-        }
 
       cell->get_dof_indices(dof_indices);
 
@@ -222,14 +261,14 @@ LV::assemble()
       boundary_values, system_matrix, solution, system_rhs, true);
   }
 }
-}
+
 
 void
 LV::solve()
 {
   pcout << "===============================================" << std::endl;
 
- 
+ //manca ancora tutto il solve con newton ecc...
 
 
 
@@ -314,8 +353,9 @@ LV::output() const
                         std::sqrt(I4_f);
 
 
-    Tensor<2,dim> P_pass= //TODO capire come si fa la derivata di W rispetto a F
+    Tensor<2,dim> P_pass= ;//TODO capire come si fa la derivata di W rispetto a F
 
+    //si potrebbe fare con la regola della catena ma non sarebbe scalabile in alcun modo
 
   }
 
