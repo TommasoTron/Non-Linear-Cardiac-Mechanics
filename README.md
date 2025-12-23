@@ -36,17 +36,6 @@ make
 ```
 
 
-If CMake cannot find deal.II/Boost automatically, point it to your installations:
-
-```bash
-cmake .. -DDEAL_II_DIR=/path/to/dealii -DBOOST_DIR=/path/to/boost
-```
-
-If your environment already exports the variables, CMake will also pick up:
-
-- `DEAL_II_DIR`
-- `BOOST_DIR`
-
 The executable is built as:
 
 - `build/cardiac.o`
