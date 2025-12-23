@@ -35,11 +35,6 @@ cmake ..
 make
 ```
 
-Optionally, to build faster:
-
-```bash
-make -j
-```
 
 If CMake cannot find deal.II/Boost automatically, point it to your installations:
 
