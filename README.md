@@ -127,7 +127,8 @@ Current conventions used in assembly:
 </table>
 
 - *Units & scaling (consistency checks)*: how can we verify that geometry, material parameters ($\mu,\kappa$). We didn't find any sources online using the Neo-Hooke implementation.
-	
+
+- *Stability and convergence*: How should we study the stability of the solution?
 
 
 - *Neo-Hookean variant (not unique)*: 
