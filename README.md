@@ -10,57 +10,53 @@ Finite-element nonlinear cardiac mechanics implementation.
 	- first Piola–Kirchhoff stress $P = \partial W/\partial F$
 	- consistent tangent $\mathrm{d}P/\mathrm{d}F$ (for Newton)
 
-## Problem statement, weak form, and Galerkin discretization
+## Mathematical model (strong form), weak form, and Galerkin discretization
 
-We consider a reference configuration $\Omega$ with boundary $\partial\Omega = \Gamma_D \cup \Gamma_N \cup \Gamma_R$ and outward unit normal $N$.
-The unknown is the displacement $u(x,t)\in\mathbb{R}^3$. The first Piola–Kirchhoff stress is $P(u)$, coming from a hyperelastic energy density $W(F)$ with deformation gradient $F = I + \nabla u$.
+This repository solves a nonlinear static equilibrium problem in a reference configuration $\Omega$, with boundary $\partial\Omega = \Gamma_D \cup \Gamma_N \cup \Gamma_R$ and outward unit normal $N$.
+The unknown is the displacement $u(x)\in\mathbb{R}^3$, and the first Piola--Kirchhoff stress is $P(u)$ (from a chosen hyperelastic law $W(F)$ with $F = I + \nabla u$).
 
 **Strong form.** Find $u$ such that
 $$
--\nabla\cdot P(u) = 0 \quad \text{in } \Omega,
-$$
-with boundary conditions
-$$
-\begin{aligned}
-u = g = 0 &&\text{on } \Gamma_D,\\
-P(u)N &= -p\,H\,N &&\text{on } \Gamma_N,\\
-P(u)N &= -\alpha\,u &&\text{on } \Gamma_R.
-\end{aligned}
+\begin{cases}
+-\nabla\cdot P(u) = 0 & \text{in } \Omega,\\
+u = g & \text{on } \Gamma_D,\\
+P(u)N = -p H N & \text{on } \Gamma_N,\\
+P(u)N = -\alpha u & \text{on } \Gamma_R.
+\end{cases}
 $$
 
 
-**Function space.** Define
+**Test Space** 
+
 $$
-V = \bigl\{ v\in [H^1(\Omega)]^3 \;\big|\; v= 0 \text{ on } \Gamma_D \bigr\}.
+V_0 = \bigl\{ v\in [H^1(\Omega)]^3 \mid v = 0 \text{ on } \Gamma_D \bigr\}.
 $$
 
-**Weak form.** Find $u\in V$ such that
+**Weak form.** Find $u\in V_g$ such that
 $$
-\int_{\Omega} P(u):\nabla v\,\mathrm{d}V
-\;+
-\int_{\Gamma_N} p\,J F^{-T}N\cdot v\,\mathrm{d}A
-\;+
-\int_{\Gamma_R} \alpha\,u\cdot v\,\mathrm{d}A
+\int_{\Omega} P(u):\nabla v\mathrm{d}V
++
+\int_{\Gamma_N} p(J F^{-T}N)\cdot v\mathrm{d}A
++
+\int_{\Gamma_R} \alpha u\cdot v\mathrm{d}A
 = 0
-\quad \forall v\in V.
+\quad \forall v\in V_0.
 $$
 
-
-**Galerkin discretization.** Let $V_h\subset V$ be a finite-element space with basis $\{\varphi_i\}_{i=1}^{n_h}$ and approximation $u_h=\sum_i U_i\,\varphi_i$.
+**Galerkin discretization.** Let $V_{h,0}\subset V_0$ be a finite-element space with basis $\{\varphi_i\}_{i=1}^{n_h}$, and $u_h$ be the FE approximation.
 The discrete residual equations are: for each test function $\varphi_i$,
 $$
 R_i(u_h) := L_i(u_h) + B_i^{N}(u_h) + B_i^{R}(u_h) = 0,\quad i=1,\dots,n_h,
 $$
 with quadrature definitions
 $$
-L_i(u_h) = \sum_{q=1}^{N_{\mathrm{Qpt}}} w(\xi_q)\,\Bigl[\,P\bigl(F_h(\xi_q)\bigr) : \nabla\varphi_i(\xi_q)\,\Bigr],
+L_i(u_h) = \sum_{q=1}^{N_{\mathrm{Qpt}}} w(\xi_q)\Bigl[ P\bigl(F_h(\xi_q)\bigr) : \nabla\varphi_i(\xi_q) \Bigr],
 $$
 $$
-B_i^{N}(u_h) = \sum_{q=1}^{N_{\mathrm{BDQpt}}} w_{\mathrm{BD}}(\xi_q)\,\Bigl[\,p\,H_h(\xi_q)\,N\cdot \varphi_i(\xi_q)\,\Bigr],
+B_i^{N}(u_h) = \sum_{q=1}^{N_{\mathrm{BDQpt}}} w_{\mathrm{BD}}(\xi_q)\Bigl[ p H_h(\xi_q) N\cdot \varphi_i(\xi_q) \Bigr],
 $$
 $$
-B_i^{R}(u_h) = \sum_{q=1}^{N_{\mathrm{BDQpt}}} w_{\mathrm{BD}}(\xi_q)\,\Bigl[\,\alpha\,u_h(\xi_q)\cdot \varphi_i(\xi_q)\,\Bigr].
-
+B_i^{R}(u_h) = \sum_{q=1}^{N_{\mathrm{BDQpt}}} w_{\mathrm{BD}}(\xi_q)\Bigl[ \alpha u_h(\xi_q)\cdot \varphi_i(\xi_q) \Bigr].
 $$
 
 
