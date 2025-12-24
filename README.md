@@ -164,8 +164,8 @@ Current conventions used in assembly:
 
 ## Doubts and Questions
 - *Unexpected asymmetry with the isotropic Neo- Hooke model*: the displacement magnitude is not symmetric, even though the Neo-Hookean material is isotropic.
-	- Could the asymmetry come from mesh quality/local refinement, element orientation, or partitioning/output artifacts?
-	- Is the problem symmetric (geometry, boundary IDs/BCs, applied loads/tractions)?
+	- Could the asymmetry come from mesh properties?
+	- Is the problem symmetrical?
 	- If the problem is symmetric, is it actually converging?
 
 <table>
