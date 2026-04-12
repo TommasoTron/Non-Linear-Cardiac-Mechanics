@@ -63,6 +63,9 @@ public:
                                     const std::string &csv_filename =
                                       "convergence.csv");
 
+  // Identifies geometry type; derived from mesh filename at construction.
+  enum class MeshType { Beam, Ventricle };
+
   // Forcing term.
   class ForcingTerm : public Function<dim>{
   public:
@@ -85,9 +88,14 @@ public:
 
   FunctionG function_g;
 
-  // Constructor.
+  // Constructor. mesh_type and gmres_tol_factor are derived from the filename:
+  //   filename contains "beam" → Beam  → gmres_tol_factor = 0.01
+  //   otherwise               → Ventricle → gmres_tol_factor = 1.5e-4
   LV(const std::string &mesh_file_name_, const unsigned int &r_)
       : mesh_file_name(mesh_file_name_), r(r_),
+        mesh_type(mesh_file_name_.find("beam") != std::string::npos
+                  ? MeshType::Beam : MeshType::Ventricle),
+        gmres_tol_factor(mesh_type == MeshType::Beam ? 0.01 : 1.5e-4),
         mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)),
         mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD)),
         mesh(MPI_COMM_WORLD), pcout(std::cout, mpi_rank == 0) {}
@@ -113,6 +121,11 @@ protected:
 
   // Polynomial degree.
   const unsigned int r;
+
+  // Geometry type, detected from mesh filename ("beam" → Beam, else Ventricle).
+  MeshType mesh_type;
+
+  double gmres_tol_factor; // derived from mesh_type: Beam→0.01, Ventricle→1.5e-4
 
   // Number of MPI processes.
   const unsigned int mpi_size;
@@ -172,8 +185,8 @@ protected:
 
   void compute_rhs();
 
-  
-  
+  bool assembly_failed_local; // true if any rank-local det(F)<=0 during compute_rhs
+
   struct LineSearchResult {
     bool accepted;
     bool stagnated;

@@ -17,19 +17,20 @@ int main(int argc, char* argv[]){
   std::string ventricular_mesh_path = "../ventricular_meshes/msh/ventricle_0_7.msh";
  // ventricular meshes created with geo file in mesh/ventricular_meshes/geo
   
-  std::string cubic_mesh_path = "../mesh/cube_0_2.msh";
+  std::string beam_mesh_path = "../mesh/beam_05.msh";
 
   
 
 
-  LV model = LV(ventricular_mesh_path, 2); //2 is the polynomial degree
+
+  LV model = LV(beam_mesh_path, 2);
   //todo could study how the degree affects the solution
 
 
   model.setup();
 
 
-  model.solve(); //solve the nonlinear problem by (pseudo)Newton+line search
+  model.solve(); //solve the nonlinear problem by Newton+line search
 
 
   

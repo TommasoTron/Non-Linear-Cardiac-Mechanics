@@ -74,11 +74,11 @@ ADNumberType compute_W(const Tensor<2, dim, ADNumberType> &F,
   double mu_hook = 4.0;
   double k_hook = 2.0;
 
-  double b_ff = 1.0;
+  double b_ff = 8.0;
   double b_ss = 2.0;
   double b_nn = 2.0;
-  double b_fs = 8.0;
-  double b_fn = 8.0;
+  double b_fs = 4.0;
+  double b_fn = 4.0;
   double b_sn = 2.0;
   double C_param = 10.0;
 };

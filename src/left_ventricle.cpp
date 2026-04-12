@@ -66,6 +66,10 @@ void LV::setup() {
         pcout << " id=" << static_cast<unsigned int>(bid) << ":" << cnt;
       pcout << std::endl;
     }
+
+    pcout << "  Mesh type: "
+          << (mesh_type == MeshType::Beam ? "Beam" : "Ventricle")
+          << "  (gmres_tol_factor=" << gmres_tol_factor << ")" << std::endl;
   }
   pcout << "-----------------------------------------------" << std::endl;
 
@@ -147,8 +151,16 @@ void LV::assemble_system() {
 // Assemble residual R(u) and Jacobian J(u) = dR/du for the current solution vector.
   compute_rhs();
 
+// throw together — prevents MPI deadlock from rank-split control flow.
+{
+  int local_ok  = assembly_failed_local ? 0 : 1;
+  int global_ok = 1;
+  MPI_Allreduce(&local_ok, &global_ok, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
+  if (!global_ok)
+    throw std::runtime_error("det(F) <= 0 on at least one MPI rank during assembly");
+}
 
-// assemble each rank's contributions to the global system 
+// assemble each rank's contributions to the global system
 jacobian_matrix.compress(VectorOperation::add);
 system_rhs.compress(VectorOperation::add);
 
@@ -174,6 +186,7 @@ void LV::compute_rhs() {
   //pcout << "===============================================" << std::endl;
 
   //pcout << "  Computing Right Hand Side" << std::endl;
+  assembly_failed_local = false;
 
   const unsigned int dofs_per_cell = fs->dofs_per_cell;
   const unsigned int n_q = quadrature->size();
@@ -255,8 +268,10 @@ void LV::compute_rhs() {
                 F_d[ii][jj] = Sacado::ScalarValue<VecADNumberType>::eval(F[ii][jj]);
 
             const double det_F = determinant(F_d);
-            AssertThrow(std::isfinite(det_F) && det_F > 1e-12,
-                        ExcMessage("Non-positive or near-singular det(F) in volume quadrature"));
+            if (!(std::isfinite(det_F) && det_F > 1e-12)) {
+              assembly_failed_local = true;
+              return;
+            }
 
             Tensor<2, dim> P;
             Tensor<4, dim> dP_dF;
@@ -324,9 +339,10 @@ void LV::compute_rhs() {
                      Fh += solution_gradient_loc_face[q];
                         
                      const double det_Fh = determinant(Fh);
-                     AssertThrow(std::isfinite(det_Fh) && det_Fh > 0.0,
-                           ExcMessage(
-                             "Non-positive or NaN det(Fh) on boundary face -> cannot invert Fh"));
+                     if (!(std::isfinite(det_Fh) && det_Fh > 0.0)) {
+                       assembly_failed_local = true;
+                       return; 
+                     }
 
                     Tensor<2, dim> aux_F = transpose(invert(Fh));
                      Tensor<2, dim> H = det_Fh * aux_F;
@@ -369,7 +385,7 @@ void LV::compute_rhs() {
                
                if (cell->face(f)->at_boundary() && cell->face(f)->boundary_id()== 4) 
                {
-                
+//                printf("ERROR: assembling robin boundary condition on face with id 4\n");                
                fe_face_values.reinit(cell,f);
        
                  fe_face_values[vec_index].get_function_values(solution, solution_values_face);
@@ -399,7 +415,14 @@ void LV::compute_rhs() {
 
         local_rhs_assembler(local_solution);
 
-    
+        bool is_finite = true;
+        for (unsigned int r = 0; r < dofs_per_cell; ++r) {
+          if (!std::isfinite(cell_rhs(r))) is_finite = false;
+          for (unsigned int c = 0; c < dofs_per_cell; ++c) {
+            if (!std::isfinite(cell_matrix(r, c))) is_finite = false;
+          }
+        }
+        AssertThrow(is_finite, ExcMessage("Infinite value computed during assembly"));
 
         cell->get_dof_indices(dof_indices);
 
@@ -417,7 +440,7 @@ void LV::solve_linear_system() {
   delta_owned = 0.0;
   delta_owned.compress(VectorOperation::insert);   //assigning the delta_owned vector to a Trilinos vector
 
-  SolverControl solver_control(15000, 1.5e-4 * system_rhs.l2_norm());
+  SolverControl solver_control(100000, gmres_tol_factor * system_rhs.l2_norm());
 
   SolverGMRES<TrilinosWrappers::MPI::Vector> solver(solver_control);
   TrilinosWrappers::PreconditionAMG preconditioner;
@@ -553,7 +576,8 @@ void LV::solve_newton() {
                                              function_g,
                                              boundary_values);
 
-                                             
+      //debug
+    //std::cout << "Dirichlet DoFs = " << boundary_values.size() << std::endl;                                           
 
     for (const auto &idx : dirichlet_dofs)
       if (const auto it = boundary_values.find(idx);
@@ -620,10 +644,10 @@ void LV::solve_newton() {
 
 
 void LV::solve(){
-  //load stepping
-  double obj_pressure = 4.0;
-  double start_pressure = 0.1;
-  int num_steps = 40;
+  const bool is_beam = (mesh_type == MeshType::Beam);
+  double obj_pressure = is_beam ? 0.1 : 4.0;
+  double start_pressure = is_beam ? 0.1 : 0.1;
+  int    num_steps   = is_beam ? 1 :  25;
   double base_dp = (obj_pressure - start_pressure) / (double)num_steps;
   double dp = base_dp;
   

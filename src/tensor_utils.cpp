@@ -21,68 +21,19 @@ void TensorUtils::compute_tensors(Tensor<2, dim> F, const Point<dim>& p, Tensor<
   // const double z_base = 1.19;
 
   double x = p[0], y = p[1], z = p[2];
-  
-  double r1 = std::sqrt(x*x + y*y + (z-d)*(z-d)); //distance from upper focal point (d) in z
-  double r2 = std::sqrt(x*x + y*y + (z+d)*(z+d)); //distance from lower focal point (-d) in z
-  double cosh_xi = (r1 + r2) / (2.0 * d); 
-  double xi = std::acosh(std::max(1.0, cosh_xi));
-
-  
-  double theta = std::acos(std::max(-1.0, std::min(1.0, (r2 - r1) / (2.0 * d))));
-  double phi = std::atan2(y, x);
-
-  double cosphi = std::cos(phi);
-  double sinphi = std::sin(phi);
-
-  const double r = std::sqrt(cosphi*cosphi + sinphi*sinphi);
-  if (r > 1e-12) {
-    cosphi /= r;
-    sinphi /= r;
-  } else {
-    cosphi = 1.0;
-    sinphi = 0.0;
-  }
-
-
-  
-  Tensor<1, 3> g_xi, g_theta, g_phi; //tangent basis vectors in prolate spheroidal coordinates
-  
-  g_xi[0] = d * std::cosh(xi) * std::sin(theta) * cosphi;
-  g_xi[1] = d * std::cosh(xi) * std::sin(theta) * sinphi;
-  g_xi[2] = d * std::sinh(xi) * std::cos(theta);
-
-  g_theta[0] = d * std::sinh(xi) * std::cos(theta) * cosphi;
-  g_theta[1] = d * std::sinh(xi) * std::cos(theta) * sinphi;
-  g_theta[2] = -d * std::cosh(xi) * std::sin(theta);
-
-  g_phi[0] = -d * std::sinh(xi) * std::sin(theta) * sinphi;
-  g_phi[1] =  d * std::sinh(xi) * std::sin(theta) * cosphi;
-  g_phi[2] = 0.0;
-
-  // Normalization
-  Tensor<1, 3> e_xi    = g_xi / g_xi.norm();      // radial (transmural)
-  Tensor<1, 3> e_theta = g_theta / g_theta.norm(); // longitudinal
-  Tensor<1, 3> e_phi   = g_phi / g_phi.norm();     // circumferential
-
  
-  const double numbers_PI = 3.14159265358979323846;
-  const double alpha_endo =  60.0 * numbers_PI / 180.0;  
-  const double alpha_epi  = -60.0 * numbers_PI / 180.0;  
-  const double xi_endo = 0.6; 
-  const double xi_epi = 1.02; 
-  double wall_fraction = (xi - xi_endo) / (xi_epi - xi_endo); 
-  
-  // Ensure wall between 0 and 1 to avoid extrapolation outside the wall
-  wall_fraction = std::max(0.0, std::min(1.0, wall_fraction));
 
-  const double alpha = alpha_endo + (alpha_epi - alpha_endo) * wall_fraction;
 
-  Tensor<1, dim> n_vec = e_xi; 
-  Tensor<1, dim> f_vec = std::cos(alpha) * e_phi + std::sin(alpha) * e_theta; 
-  f_vec /= f_vec.norm();
+  Tensor<1, dim> f_vec; 
+  f_vec[0] =1.0; f_vec[1] = 0.0; f_vec[2] = 0.0;
 
-  Tensor<1, dim> s_vec = cross_product_3d(n_vec, f_vec);
-  s_vec /= s_vec.norm();
+  Tensor<1, dim> s_vec;
+  s_vec[0] = 0.0; s_vec[1] = 1.0; s_vec[2] = 0.0;
+
+  Tensor<1, dim> n_vec;
+  n_vec[0] = 0.0; n_vec[1] = 0.0; n_vec[2] = 1.0;
+
+
 
   ad_helper.reset();
   
@@ -172,14 +123,10 @@ TensorUtils::compute_W(const Tensor<2, dim, ADNumberType> &F,
   const ADNumberType E_sn = scalar_product(s, E_ad * n);
 
   // --- Guccione exponential argument Q ---
-  const ADNumberType Q =
-      b_ff * E_ff * E_ff +
-      b_ss * E_ss * E_ss +
-      b_nn * E_nn * E_nn +
-      2.0 * b_fs * E_fs * E_fs +
-      2.0 * b_fn * E_fn * E_fn +
-      2.0 * b_sn * E_sn * E_sn;
-
+const ADNumberType Q =
+    b_ff  * E_ff * E_ff                    
+  + b_sn  * (E_ss*E_ss + E_nn*E_nn + 2.0*E_sn*E_sn)  
+  + b_fs * 2.0*(E_fs*E_fs + E_fn*E_fn);
   // --- Strain energy (Guccione) ---
   ADNumberType psi_ad = (C_param / 2.0) * (exp(Q) - 1.0);
 
