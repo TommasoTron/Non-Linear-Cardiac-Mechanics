@@ -646,8 +646,8 @@ void LV::solve_newton() {
 void LV::solve(){
   const bool is_beam = (mesh_type == MeshType::Beam);
   double obj_pressure = is_beam ? 0.1 : 4.0;
-  double start_pressure = is_beam ? 0.1 : 0.1;
-  int    num_steps   = is_beam ? 1 :  25;
+  double start_pressure = is_beam ? 0.01 : 0.01;
+  int    num_steps   = is_beam ? 0 :  25;
   double base_dp = (obj_pressure - start_pressure) / (double)num_steps;
   double dp = base_dp;
   
