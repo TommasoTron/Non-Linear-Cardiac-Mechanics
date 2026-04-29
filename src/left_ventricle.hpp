@@ -95,7 +95,7 @@ public:
       : mesh_file_name(mesh_file_name_), r(r_),
         mesh_type(mesh_file_name_.find("beam") != std::string::npos
                   ? MeshType::Beam : MeshType::Ventricle),
-        gmres_tol_factor(mesh_type == MeshType::Beam ? 0.01 : 1.5e-4),
+        gmres_tol_factor(mesh_type == MeshType::Beam ? 0.1 : 1.5e-4),
         mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD)),
         mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD)),
         mesh(MPI_COMM_WORLD), pcout(std::cout, mpi_rank == 0) {}
