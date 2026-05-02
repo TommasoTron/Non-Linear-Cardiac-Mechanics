@@ -1,5 +1,6 @@
 #include "left_ventricle.hpp"
 #include <iostream>
+#include <filesystem>
 
 
 int main(int argc, char* argv[]){
@@ -13,25 +14,51 @@ int main(int argc, char* argv[]){
 //   3) output():   write solution to VTU/PVTU for visualization
 // MPI_InitFinalize keeps MPI alive for the entirity of main()
 
+  namespace fs = std::filesystem;
 
-  std::string ventricular_mesh_path = "../ventricular_meshes/msh/ventricle_0_7.msh";
- // ventricular meshes created with geo file in mesh/ventricular_meshes/geo
-  
-  std::string beam_mesh_path = "../mesh/beam_05.msh";
+  // Clean old solutions
+  for (const auto& entry : fs::directory_iterator("../build/")) {
+    std::string filename = entry.path().filename().string();
+    if (filename.find("output-") == 0) {
+      fs::remove(entry.path());
+    }
+  }
 
-  
+  // Remove old solution directories
+  for (const auto& entry : fs::directory_iterator("../build/")) {
+    std::string dirname = entry.path().filename().string();
+    if (dirname.find("solution_") == 0 && fs::is_directory(entry.path())) {
+      fs::remove_all(entry.path());
+    }
+  }
 
+  // Get all .msh files in ../mesh/
+  std::vector<std::string> mesh_files;
+  for (const auto& entry : fs::directory_iterator("../mesh/")) {
+    if (entry.path().extension() == ".msh") {
+      mesh_files.push_back(entry.path().string());
+    }
+  }
 
-
-  LV model = LV(beam_mesh_path, 2);
-  //todo could study how the degree affects the solution
-
-
-  model.setup();
-
-
-  model.solve(); //solve the nonlinear problem by Newton+line search
-
+  // For each mesh
+  for (const auto& mesh : mesh_files) {
+    std::string mesh_name = fs::path(mesh).stem().string();
+    std::string subdir = "../build/solution_" + mesh_name;
+    fs::create_directory(subdir);
+    
+    // Change to subdir
+    fs::current_path(subdir);
+    
+    // Relative path to mesh from subdir
+    std::string relative_mesh = "../../mesh/" + fs::path(mesh).filename().string();
+    
+    LV model = LV(relative_mesh, 2);
+    model.setup();
+    model.solve();
+    
+    // Change back to build
+    fs::current_path("../../build");
+  }
 
   
   
