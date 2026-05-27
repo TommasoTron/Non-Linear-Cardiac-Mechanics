@@ -112,5 +112,4 @@ Current conventions used in assembly:
 ## Notes on the nonlinear solve
 
 - Newton iterations assemble residual/Jacobian each step.
-- A backtracking line search is used to avoid invalid states (all 0 residuals and nans)
-implementation.
+- A backtracking line search is used to avoid invalid states such as zero residuals or NaN values.
