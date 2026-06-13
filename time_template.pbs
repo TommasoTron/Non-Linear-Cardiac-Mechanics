@@ -1,0 +1,48 @@
+#!/bin/bash
+#PBS -N cardiac_scaling
+#PBS -q cpu
+#PBS -l select=1:ncpus=28
+#PBS -l walltime=02:30:00
+#PBS -j oe
+#PBS -o /home/{{MATRICOLA}}/Non-Linear-Cardiac-Mechanics/LOG_DEFINITIVO_SCALING.txt
+
+set -x
+mkdir -p /home/{{MATRICOLA}}/Non-Linear-Cardiac-Mechanics
+exec > >(tee -a /home/{{MATRICOLA}}/Non-Linear-Cardiac-Mechanics/LOG_LIVE_SCALING.txt) 2>&1
+
+echo "Node: $(hostname)"
+
+BASE_DIR="/home/{{MATRICOLA}}/Non-Linear-Cardiac-Mechanics"
+BUILD_DIR="$BASE_DIR/build"
+SIF_IMAGE="/home/{{MATRICOLA}}/dealii_ufficiale.sif"
+CSV_FILE="$BASE_DIR/scaling_results.csv"
+
+echo ">>> Starting Compilation in $BUILD_DIR..."
+
+mkdir -p $BUILD_DIR
+cd $BUILD_DIR
+rm -f CMakeCache.txt
+
+apptainer exec --cleanenv $SIF_IMAGE cmake -DCMAKE_BUILD_TYPE=Release ..
+apptainer exec --cleanenv $SIF_IMAGE make cardiac_holzapfel -j28
+
+if [ ! -f "./cardiac_holzapfel" ]; then
+    echo "critical error >:("
+    exit 1
+fi
+
+echo "PROCS,TIME(s)" > $CSV_FILE
+
+MPI_CORES=(1 2 4 8 16 20 24 28)
+
+for t in "${MPI_CORES[@]}"; do
+    echo ">>> TEST SCALING $t PROCESSORS "
+    START_TIME=$(date +%s.%N)
+    stdbuf -oL apptainer exec --cleanenv $SIF_IMAGE mpirun --mca btl ^openib -n $t ./cardiac_holzapfel
+    END_TIME=$(date +%s.%N)
+    ELAPSED=$(awk "BEGIN {print $END_TIME - $START_TIME}")
+    echo "$t,$ELAPSED" >> $CSV_FILE
+    echo ">>> END $t PROCS ELAPSED $ELAPSED s"
+done
+
+echo ">>> output saved to $CSV_FILE"
