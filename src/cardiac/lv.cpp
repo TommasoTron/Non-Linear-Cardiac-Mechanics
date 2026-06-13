@@ -549,5 +549,22 @@ void LV::output_fibers(const std::string &filename) const {
   data_out.write_vtu_with_pvtu_record("./", filename, 0, MPI_COMM_WORLD);
 }
 
+void LV::save_solution(const std::string &filename) const
+{
+
+  auto rep = gather_to_rank0();
+
+  if (mpi_rank == 0 && rep != nullptr) {
+    std::ofstream out(filename);
+
+    out << std::scientific << std::setprecision(16);
+
+    for (unsigned int i = 0; i < rep->solution.size(); ++i) {
+      out << rep->solution(i) << "\n";
+    }
+    
+    std::cout << "exported sol to: " << filename << std::endl;
+  }
+}
 
 } // namespace cardiac

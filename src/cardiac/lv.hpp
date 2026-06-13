@@ -58,6 +58,7 @@ public:
                                     const std::string              &csv_filename
                                       = "convergence.csv");
   void output_fibers(const std::string &filename = "fibers") const;
+  void save_solution(const std::string& filename) const;
 protected:
   std::unique_ptr<StrainEnergy> energy_;
   std::unique_ptr<FiberField>   fibers_;

@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
   }
 
   
-  const std::string mesh = "../ventricular_meshes/msh/ventricle_0_3.msh";
+  const std::string mesh = "../ventricular_meshes/msh/ventricle_0_99.msh";
 
 
   params.alpha_robin = cardiac::constants::holzapfel::ALPHA_ROBIN;
@@ -72,6 +72,9 @@ int main(int argc, char *argv[]) {
 
   model.output_fibers("fibers_ventricle_laplace_0_7");
   
-  //model.solve();
+  model.solve();
+
+  unsigned int n_ranks = dealii::Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD);
+  model.save_solution("sol_" + std::to_string(n_ranks) + ".txt");
   return 0;
 }
